@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SuiteSpot Urgent Enhancement Items – Executive Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f4f0; color: #1a1a18; }
+
+  .header { background: #1a1a18; color: #f5f4f0; padding: 28px 40px 24px; }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 22px; font-weight: 500; letter-spacing: -0.3px; }
+  .header-sub { font-size: 13px; color: #9e9d98; margin-top: 4px; }
+  .header-meta { display: flex; gap: 20px; margin-top: 8px; flex-wrap: wrap; }
+  .header-date { font-size: 11px; color: #9e9d98; }
+  .header-live { font-size: 11px; color: #5dcaa5; }
+
+  .loading-state { padding: 60px 40px; text-align: center; }
+  .loading-spinner { width: 32px; height: 32px; border: 2px solid #d8d7d2; border-top-color: #1a1a18; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: #888780; }
+
+  .error-state { padding: 40px; background: #fcebeb; border: 0.5px solid #f7c1c1; border-radius: 10px; margin: 28px 40px; }
+  .error-title { font-size: 14px; font-weight: 500; color: #791f1f; margin-bottom: 8px; }
+  .error-detail { font-size: 12px; color: #a32d2d; line-height: 1.6; }
+
+  .main { padding: 28px 40px; max-width: 1280px; display: none; }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .metric { background: #fff; border: 0.5px solid #d8d7d2; border-radius: 10px; padding: 16px; }
+  .metric-label { font-size: 11px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; color: #888780; margin-bottom: 8px; }
+  .metric-value { font-size: 28px; font-weight: 500; color: #1a1a18; line-height: 1; }
+  .metric-sub { font-size: 12px; color: #888780; margin-top: 4px; }
+  .metric.red .metric-value { color: #a32d2d; }
+  .metric.amber .metric-value { color: #854f0b; }
+  .metric.green .metric-value { color: #3b6d11; }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+  .chart-card { background: #fff; border: 0.5px solid #d8d7d2; border-radius: 10px; padding: 20px; }
+  .chart-title { font-size: 13px; font-weight: 500; color: #444441; margin-bottom: 16px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; font-size: 11px; color: #5f5e5a; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  .section-block { margin-bottom: 28px; }
+  .section-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px 8px 0 0; border: 0.5px solid #d8d7d2; border-bottom: none; flex-wrap: wrap; }
+  .section-header.highest { background: #fcebeb; border-color: #f7c1c1; }
+  .section-header.high { background: #faeeda; border-color: #fac775; }
+  .section-header.completed { background: #eaf3de; border-color: #c0dd97; }
+  .section-label { font-size: 13px; font-weight: 500; }
+  .section-header.highest .section-label { color: #791f1f; }
+  .section-header.high .section-label { color: #633806; }
+  .section-header.completed .section-label { color: #27500a; }
+  .section-count { font-size: 11px; padding: 2px 8px; border-radius: 3px; font-weight: 500; }
+  .section-header.highest .section-count { background: #f7c1c1; color: #791f1f; }
+  .section-header.high .section-count { background: #fac775; color: #633806; }
+  .section-header.completed .section-count { background: #c0dd97; color: #27500a; }
+  .section-note { font-size: 11px; margin-left: auto; }
+  .section-header.highest .section-note { color: #a32d2d; }
+  .section-header.high .section-note { color: #854f0b; }
+  .section-header.completed .section-note { color: #3b6d11; }
+
+  .table-wrap { background: #fff; border: 0.5px solid #d8d7d2; border-top: none; border-radius: 0 0 10px 10px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  th { text-align: left; font-size: 10px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; color: #888780; padding: 8px 12px; border-bottom: 0.5px solid #d8d7d2; white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 0.5px solid #eeeee9; vertical-align: top; color: #2c2c2a; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf7; }
+
+  .col-num   { width: 44px; }
+  .col-topic { width: 170px; }
+  .col-desc  { width: 210px; }
+  .col-why   { width: 210px; }
+  .col-ss    { width: 120px; }
+  .col-essex { width: 110px; }
+  .col-type  { width: 76px; }
+
+  .topic-text { font-size: 12px; font-weight: 500; color: #1a1a18; line-height: 1.4; }
+  .desc-text  { font-size: 11px; color: #5f5e5a; line-height: 1.5; }
+  .why-text   { font-size: 11px; color: #444441; line-height: 1.5; font-style: italic; }
+
+  .badge { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+  .b-committed      { background: #eaf3de; color: #27500a; }
+  .b-reviewing      { background: #e6f1fb; color: #0c447c; }
+  .b-roadmap-now    { background: #eeedfe; color: #3c3489; }
+  .b-roadmap-future { background: #d3d1c7; color: #444441; }
+  .b-completed      { background: #e1f5ee; color: #085041; }
+  .b-retest         { background: #fbeaf0; color: #72243e; }
+  .b-waiting        { background: #f1efe8; color: #5f5e5a; }
+  .b-inprog         { background: #faeeda; color: #854f0b; }
+  .b-noresponse     { background: #f1efe8; color: #888780; }
+  .b-cust           { background: #e6f1fb; color: #185fa5; }
+  .b-bug            { background: #fcebeb; color: #791f1f; }
+  .b-feature        { background: #e6f1fb; color: #0c447c; }
+  .b-config         { background: #eeedfe; color: #3c3489; }
+
+  .empty-state { padding: 24px 16px; font-size: 12px; color: #888780; font-style: italic; }
+
+  .footer { padding: 16px 40px 32px; font-size: 11px; color: #888780; border-top: 0.5px solid #d8d7d2; margin-top: 8px; line-height: 1.6; }
+
+  @media (max-width: 700px) {
+    .main, .header, .footer { padding-left: 16px; padding-right: 16px; }
+    .charts-row { grid-template-columns: 1fr; }
+    .col-type, .col-why { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1>SuiteSpot Urgent Enhancement Items</h1>
+      <div class="header-sub">Essex Feature Request &amp; Issue Tracker — Pilot Program · High &amp; Highest Priority</div>
+      <div class="header-meta">
+        <span class="header-date" id="header-date">Loading data...</span>
+        <span class="header-live">● Live data from SuiteSpot tracker</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="loading-state" id="loading">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Fetching latest data from SuiteSpot tracker...</div>
+</div>
+
+<div class="error-state" id="error-state" style="display:none;">
+  <div class="error-title">Unable to load data</div>
+  <div class="error-detail" id="error-detail"></div>
+</div>
+
+<div class="main" id="main-content">
+
+  <div class="metrics" id="metrics-row"></div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">SuiteSpot response status — all urgent open items</div>
+      <div class="legend" id="ss-legend"></div>
+      <div style="position:relative;height:200px;">
+        <canvas id="ssChart" role="img" aria-label="Donut chart showing SuiteSpot response status breakdown for urgent items."></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Urgent items by product area</div>
+      <div class="legend" id="topic-legend"></div>
+      <div style="position:relative;height:200px;">
+        <canvas id="topicChart" role="img" aria-label="Horizontal bar chart showing urgent items by product area."></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-block" id="section-highest">
+    <div class="section-header highest">
+      <span class="section-label">Highest priority</span>
+      <span class="section-count" id="count-highest">0 items</span>
+      <span class="section-note">All items remain until fully resolved by Essex</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th class="col-num">#</th>
+          <th class="col-topic">Topic</th>
+          <th class="col-desc">Description</th>
+          <th class="col-why">Why it matters</th>
+          <th class="col-ss">SuiteSpot status</th>
+          <th class="col-essex">Essex status</th>
+          <th class="col-type">Type</th>
+        </tr></thead>
+        <tbody id="highest-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-block" id="section-high">
+    <div class="section-header high">
+      <span class="section-label">High priority</span>
+      <span class="section-count" id="count-high">0 items</span>
+      <span class="section-note">All items remain until fully resolved by Essex</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th class="col-num">#</th>
+          <th class="col-topic">Topic</th>
+          <th class="col-desc">Description</th>
+          <th class="col-why">Why it matters</th>
+          <th class="col-ss">SuiteSpot status</th>
+          <th class="col-essex">Essex status</th>
+          <th class="col-type">Type</th>
+        </tr></thead>
+        <tbody id="high-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-block" id="section-completed">
+    <div class="section-header completed">
+      <span class="section-label">Recently completed</span>
+      <span class="section-count" id="count-completed">0 items</span>
+      <span class="section-note">High/Highest items completed in the last 7 days — drop off after that window</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th class="col-num">#</th>
+          <th class="col-topic">Topic</th>
+          <th class="col-desc">Description</th>
+          <th class="col-why">Why it matters</th>
+          <th class="col-ss">SuiteSpot status</th>
+          <th class="col-essex">Essex status</th>
+          <th class="col-type">Type</th>
+        </tr></thead>
+        <tbody id="completed-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer" id="footer" style="display:none;">
+  Source: Essex Feature Request &amp; Issue Tracker – SuiteSpot Onboarding · Feedback tab · Data refreshes automatically each time the dashboard is opened · Filtered to High and Highest Essex Priority · Open sections display all items regardless of age and remain until Essex Status = Completed · Recently Completed section shows only items where Essex Status = Completed and Date Completed falls within the prior 7 days · *SS "Completed" with Essex status of Waiting on SuiteSpot or Retest remains in open sections as unresolved
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1jlGN6egUQjqtger95TW_KusX3hfmQ3ahjvSCOmzTmoI/export?format=csv&gid=749830725';
+
+// Column name mapping from original Google Sheet headers
+const COL = {
+  item:          'Item',
+  topic:         'Topic',
+  desc:          'Description [Required]',
+  why:           'Why is this important? What problem does it solve?  [Required]',
+  essexPriority: 'Essex Priority',
+  essexStatus:   'Essex Status',
+  ssStatus:      'SuiteSpot Status',
+  issueFeature:  'Issue / Feature',
+  dateCompleted: 'Date Completed'
+};
+
+function ssBadge(s) {
+  s = (s || '').trim();
+  if (!s) return '<span class="badge b-noresponse">No response</span>';
+  if (s === 'Committed') return '<span class="badge b-committed">Committed</span>';
+  if (s === 'SuiteSpot Reviewing' || s === 'In Review') return '<span class="badge b-reviewing">Reviewing</span>';
+  if (s === 'For Immediate Roadmap' || s === 'Immediate Road Map') return '<span class="badge b-roadmap-now">Immed. roadmap</span>';
+  if (s === 'For Future Road Map') return '<span class="badge b-roadmap-future">Future roadmap</span>';
+  if (s === 'Completed') return '<span class="badge b-completed">Completed*</span>';
+  if (s === 'In Progress (Config)') return '<span class="badge b-inprog">In progress</span>';
+  if (s === 'Not on Road Map') return '<span class="badge b-noresponse">Not on roadmap</span>';
+  return '<span class="badge b-noresponse">' + s + '</span>';
+}
+
+function essexBadge(s) {
+  s = (s || '').trim();
+  if (s === 'Waiting on SuiteSpot') return '<span class="badge b-waiting">Waiting on SS</span>';
+  if (s === 'Retest') return '<span class="badge b-retest">Retest</span>';
+  if (s === 'In Progress') return '<span class="badge b-inprog">In progress</span>';
+  if (s === 'Customer Reviewing') return '<span class="badge b-cust">Cust. reviewing</span>';
+  if (s === 'Completed') return '<span class="badge b-completed">Completed</span>';
+  if (s === 'Duplicate') return '<span class="badge b-noresponse">Duplicate</span>';
+  if (s === 'Closed') return '<span class="badge b-noresponse">Closed</span>';
+  return s ? '<span class="badge b-noresponse">' + s + '</span>' : '';
+}
+
+function typeBadge(s) {
+  s = (s || '').trim();
+  if (s === 'Bug') return '<span class="badge b-bug">Bug</span>';
+  if (s.includes('Feature')) return '<span class="badge b-feature">Feature</span>';
+  if (s === 'Config Change' || s === 'Config') return '<span class="badge b-config">Config</span>';
+  return '';
+}
+
+function buildRows(list) {
+  if (!list.length) return '<tr><td colspan="7" class="empty-state">No items in this category for the current period.</td></tr>';
+  return list.map(r => `<tr>
+    <td style="font-size:11px;font-weight:500;color:#888780;">${r.item}</td>
+    <td><div class="topic-text">${r.topic}</div></td>
+    <td><div class="desc-text">${r.desc}</div></td>
+    <td><div class="why-text">${r.why}</div></td>
+    <td>${ssBadge(r.ssStatus)}</td>
+    <td>${essexBadge(r.essexStatus)}</td>
+    <td>${typeBadge(r.issueFeature)}</td>
+  </tr>`).join('');
+}
+
+function parseDate(str) {
+  if (!str || str.trim() === '') return null;
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function renderDashboard(rows) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setDate(today.getDate() - 7);
+
+  const OPEN_EXCLUDE = ['completed', 'closed', 'duplicate', 'out of scope'];
+
+  const highest = [], high = [], recentCompleted = [];
+
+  rows.forEach(r => {
+    const priority = (r[COL.essexPriority] || '').trim();
+    const essexStatus = (r[COL.essexStatus] || '').trim();
+    const esLower = essexStatus.toLowerCase();
+    if (!['Highest', 'High'].includes(priority)) return;
+
+    const item = {
+      item:        (r[COL.item] || '').replace(/\.0$/, ''),
+      topic:       (r[COL.topic] || '').trim(),
+      desc:        (r[COL.desc] || '').trim(),
+      why:         (r[COL.why] || '').trim(),
+      essexPriority: priority,
+      essexStatus: essexStatus,
+      ssStatus:    (r[COL.ssStatus] || '').trim(),
+      issueFeature:(r[COL.issueFeature] || '').trim(),
+      dateCompleted: r[COL.dateCompleted]
+    };
+
+    if (esLower === 'completed') {
+      const completedDate = parseDate(item.dateCompleted);
+      if (completedDate && completedDate >= sevenDaysAgo) {
+        recentCompleted.push(item);
+      }
+      // completed items only appear in recently completed, not open sections
+      return;
+    }
+
+    if (OPEN_EXCLUDE.includes(esLower)) return;
+
+    if (priority === 'Highest') highest.push(item);
+    else high.push(item);
+  });
+
+  // Update header date
+  document.getElementById('header-date').textContent = 'As of ' + today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  // Metrics
+  const awaitingVendor = [...highest, ...high].filter(i => i.essexStatus === 'Waiting on SuiteSpot').length;
+  const committed = [...highest, ...high].filter(i => ['Committed','For Immediate Roadmap','Immediate Road Map'].includes(i.ssStatus)).length;
+  const noResponse = [...highest, ...high].filter(i => !i.ssStatus).length;
+  const totalOpen = highest.length + high.length;
+
+  document.getElementById('metrics-row').innerHTML = `
+    <div class="metric red"><div class="metric-label">Open Urgent Items</div><div class="metric-value">${totalOpen}</div><div class="metric-sub">High or Highest priority</div></div>
+    <div class="metric red"><div class="metric-label">Highest Priority</div><div class="metric-value">${highest.length}</div><div class="metric-sub">Not yet fully resolved</div></div>
+    <div class="metric amber"><div class="metric-label">Awaiting Vendor</div><div class="metric-value">${awaitingVendor}</div><div class="metric-sub">Waiting on SuiteSpot</div></div>
+    <div class="metric green"><div class="metric-label">Committed / Roadmap</div><div class="metric-value">${committed}</div><div class="metric-sub">Active delivery path</div></div>
+    <div class="metric"><div class="metric-label">No SS Response</div><div class="metric-value">${noResponse}</div><div class="metric-sub">No vendor status yet</div></div>
+    <div class="metric"><div class="metric-label">Recently Completed</div><div class="metric-value">${recentCompleted.length}</div><div class="metric-sub">In past 7 days</div></div>
+  `;
+
+  // Section counts
+  document.getElementById('count-highest').textContent = highest.length + ' item' + (highest.length !== 1 ? 's' : '');
+  document.getElementById('count-high').textContent = high.length + ' item' + (high.length !== 1 ? 's' : '');
+  document.getElementById('count-completed').textContent = recentCompleted.length + ' item' + (recentCompleted.length !== 1 ? 's' : '');
+
+  // Table rows
+  document.getElementById('highest-body').innerHTML = buildRows(highest);
+  document.getElementById('high-body').innerHTML = buildRows(high);
+  document.getElementById('completed-body').innerHTML = buildRows(recentCompleted);
+
+  // Charts - SS Status breakdown
+  const allOpen = [...highest, ...high];
+  const ssGroups = {};
+  allOpen.forEach(i => {
+    let label = i.ssStatus || 'No response';
+    if (label === 'SuiteSpot Reviewing' || label === 'In Review') label = 'Reviewing';
+    if (label === 'For Immediate Roadmap' || label === 'Immediate Road Map') label = 'Immed. roadmap';
+    if (label === 'For Future Road Map') label = 'Future roadmap';
+    ssGroups[label] = (ssGroups[label] || 0) + 1;
+  });
+  const ssColors = { 'Reviewing':'#185fa5','No response':'#888780','Completed*':'#085041','Committed':'#3b6d11','Immed. roadmap':'#3c3489','Future roadmap':'#b4b2a9','Not on roadmap':'#d3d1c7' };
+  const ssLabels = Object.keys(ssGroups);
+  const ssData = ssLabels.map(l => ssGroups[l]);
+  const ssBgColors = ssLabels.map(l => ssColors[l] || '#888780');
+
+  document.getElementById('ss-legend').innerHTML = ssLabels.map((l,i) =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${ssBgColors[i]}"></span>${l} (${ssData[i]})</span>`
+  ).join('');
+
+  new Chart(document.getElementById('ssChart'), {
+    type: 'doughnut',
+    data: { labels: ssLabels, datasets: [{ data: ssData, backgroundColor: ssBgColors, borderWidth: 0 }] },
+    options: { responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{ legend:{ display:false } } }
+  });
+
+  // Topic area chart
+  const topicMap = {
+    'Engage': 0, 'SAM Chat': 0, 'SAM Voice': 0, 'Inspections': 0, 'Mobile App': 0,
+    'Turnover': 0, 'Role / Routing': 0, 'Other': 0
+  };
+  allOpen.forEach(i => {
+    const t = i.topic.toLowerCase();
+    if (t.includes('engage')) topicMap['Engage']++;
+    else if (t.includes('sam chat') || t.includes('sam voice') || t.includes('sam bypass') || t.includes('sam ')) {
+      if (t.includes('voice')) topicMap['SAM Voice']++;
+      else topicMap['SAM Chat']++;
+    }
+    else if (t.includes('inspection')) topicMap['Inspections']++;
+    else if (t.includes('mobile')) topicMap['Mobile App']++;
+    else if (t.includes('turnover')) topicMap['Turnover']++;
+    else if (t.includes('role') || t.includes('routing')) topicMap['Role / Routing']++;
+    else topicMap['Other']++;
+  });
+
+  const topicEntries = Object.entries(topicMap).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+  const topicColors = ['#185fa5','#854f0b','#633806','#3c3489','#3b6d11','#0f6e56','#72243e','#5f5e5a'];
+
+  document.getElementById('topic-legend').innerHTML = topicEntries.map(([l,v],i) =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${topicColors[i]}"></span>${l} (${v})</span>`
+  ).join('');
+
+  new Chart(document.getElementById('topicChart'), {
+    type: 'bar',
+    data: {
+      labels: topicEntries.map(e => e[0]),
+      datasets: [{ data: topicEntries.map(e => e[1]), backgroundColor: topicColors.slice(0, topicEntries.length), borderWidth:0, borderRadius:3 }]
+    },
+    options: {
+      indexAxis: 'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ color:'rgba(0,0,0,0.05)' }, ticks:{ stepSize:1, font:{ size:11 } } },
+        y:{ ticks:{ font:{ size:11 } } }
+      }
+    }
+  });
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+  document.getElementById('footer').style.display = 'block';
+}
+
+// Fetch live data
+Papa.parse(SHEET_CSV_URL, {
+  download: true,
+  header: true,
+  skipEmptyLines: true,
+  complete: function(results) {
+    if (!results.data || results.data.length === 0) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error-state').style.display = 'block';
+      document.getElementById('error-detail').textContent = 'No data was returned from the tracker. The sheet may be temporarily unavailable. Try refreshing the page.';
+      return;
+    }
+    try {
+      renderDashboard(results.data);
+    } catch(e) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error-state').style.display = 'block';
+      document.getElementById('error-detail').textContent = 'Data loaded but could not be rendered. Column names may have changed in the source sheet. Error: ' + e.message;
+    }
+  },
+  error: function(err) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-state').style.display = 'block';
+    document.getElementById('error-detail').textContent = 'Could not reach the SuiteSpot tracker. Check your internet connection and try refreshing. If the problem persists, the Google Sheet sharing settings may have changed.';
+  }
+});
+</script>
+</body>
+</html>
